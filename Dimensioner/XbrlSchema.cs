@@ -7,10 +7,7 @@ namespace Dimensioner
     {
         public string Path { get; set; }
         public string Namespace { get; set; }
-
         public List<XbrlSchema> Children { get; set; }
-        //public List<XbrlElement> Elements { get; set; }
-        //public List<Linkbase> Linkbases { get; set; }
 
         internal XbrlSchema(string path)
         {
@@ -22,17 +19,5 @@ namespace Dimensioner
             Path = path;
             Namespace = targetNamespace;
         }
-
-        /*
-        public XbrlElement Element(string id)
-        {
-            return Elements.Single(e => e.Id == id);
-        }
-
-        public XbrlElement GetElement(string id)
-        {
-            return Elements.SingleOrDefault(e => e.Id == id);
-        }
-        */
     }
 }

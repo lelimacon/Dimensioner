@@ -30,7 +30,7 @@ namespace Dimensioner.Components.Definitions
             // Create custom nodes.
             var linkNode = new XElement(Link + "definitionLink",
                 new XAttribute(Xlink + "type", "locator"),
-                new XAttribute(Xlink + "role", definition.Role.Uri),
+                new XAttribute(Xlink + "role", definition.Role?.Uri),
                 elements);
             var linkbaseNode = new XElement(Link + "linkbase",
                 new XAttribute(XNamespace.Xmlns + "link", Link),

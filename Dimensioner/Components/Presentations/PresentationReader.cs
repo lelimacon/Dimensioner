@@ -40,7 +40,7 @@ namespace Dimensioner.Components.Presentations
         private Presentation BuildPresentation(Linkbase linkbase, XElement node)
         {
             string role = node.Attr(Ns.Xlink, "role");
-            var roots = TaxonomyReader.ToLocatorGraph(linkbase.Path, node, true);
+            var roots = TaxonomyReader.ToLocatorGraph(linkbase.Path, node, false);
 
             // Create the definition.
             XbrlSchema schema = linkbase.Schema;

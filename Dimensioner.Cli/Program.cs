@@ -3,7 +3,6 @@ using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Net;
-using System.Reflection;
 using Dimensioner.Components.Arcroles;
 using Dimensioner.Components.Calculations;
 using Dimensioner.Components.Definitions;
@@ -12,28 +11,30 @@ using Dimensioner.Components.Labels;
 using Dimensioner.Components.Presentations;
 using Dimensioner.Components.Roles;
 using Dimensioner.Components.Tables;
-using Dimensioner.Utils;
 
 namespace Dimensioner.Cli
 {
     internal class Program
     {
-        private const string EntryPath =
-            @"..\..\..\..\..\DATA\TAXO\LDT\2.0.1\www.srb.europa.eu\eu\fr\xbrl\fws\res\eu-806-2014\2017-10-10\mod\ldt-con.xsd";
+        //const string EntryPath = @"..\..\..\..\..\DATA\TAXO\LDT\2.0.1\www.srb.europa.eu\eu\fr\xbrl\fws\res\eu-806-2014\2017-10-10\mod\ldt-con.xsd";
+        //const string EntryPath = "https://www.ifrs.org/-/media/feature/standards/taxonomy/2018/ifrst_2018-03-16.zip?la=en&hash=0AEB90D8569C648C9433398AC0E1D5C006FAFCEC";
+        const string EntryPath = "https://raw.githubusercontent.com/SunSpecOrangeButton/solar-taxonomy/v1.2/core/solar_all_2018-03-31_r01.xsd";
 
         private static void Main(string[] args)
         {
             var w = new Stopwatch();
 
+            IWebProxy proxy = WebRequest.DefaultWebProxy;
+            proxy.Credentials = CredentialCache.DefaultCredentials;
             var config = new ReaderConfiguration
             {
                 UseCache = true
             };
-            XbrlSchemaSet schemaSet;
+            XbrlSchemaSet schemaSet = null;
             var labelReader = new LabelReader();
             var genericLabelReader = new GenericLabelReader();
-            {
-                var reader = new TaxonomyReader(config)
+
+            using (var reader = new TaxonomyReader(config)
                     .Register<ElementReader>()
                     .Register<RoleReader>()
                     .Register<ArcroleReader>()
@@ -43,23 +44,38 @@ namespace Dimensioner.Cli
                     .Register<TableReader>()
                     .Register<TableGroupReader>()
                     .Register(labelReader)
-                    .Register(genericLabelReader);
-                string path = LocalUrlResolver.Resolve(Assembly.GetExecutingAssembly().Location, EntryPath.Replace('\\', '/'));
+                    .Register(genericLabelReader))
+            {
+                Console.WriteLine($"Reading taxonomy at {EntryPath}");
+                Console.WriteLine();
 
                 w.Start();
-                schemaSet = reader.Read(path);
+                schemaSet = reader.Read(EntryPath);
                 schemaSet.Compile();
                 w.Stop();
 
+                // Print errors.
+                if (reader.Errors.Any())
+                {
+                    Console.WriteLine($"{reader.Errors.Count} component reader errors");
+                    foreach (var error in reader.Errors)
+                        Console.WriteLine($"  - {error.ComponentType.Name} : {error.Message}");
+                    Console.WriteLine();
+                }
+
                 // Print elapsed.
-                Console.WriteLine($"Done in {w.Elapsed}");
+                Console.WriteLine($"Read {schemaSet.Schemas.Count()} schemas in {w.Elapsed}");
                 foreach (var tracker in reader.ComponentReaders)
                     Console.WriteLine($"  - {tracker.Reader.GetType().Name} : {tracker.Elapsed}");
                 Console.WriteLine();
             }
 
-            //PrintElements(schemaSet, labelReader, genericLabelReader);
-            ExportLinkbase(schemaSet);
+            if (schemaSet == null)
+                return;
+
+            PrintElements(schemaSet, labelReader, genericLabelReader);
+            //ExportLinkbase(schemaSet);
+            //PrintTypes(schemaSet);
 
             Console.ReadLine();
         }
@@ -68,8 +84,8 @@ namespace Dimensioner.Cli
         {
             // Print linkbase.
             Definition definition = schemaSet.Components<Definition>().First();
-            string savePath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.Desktop),
-                "test-def.xml");
+            string desktopPath = Environment.GetFolderPath(Environment.SpecialFolder.Desktop);
+            string savePath = Path.Combine(desktopPath, "test-def.xml");
 
             Console.WriteLine($"Exporting definition {definition.Role?.Uri}");
             Console.WriteLine($"- Defined in {definition.Schema.Path}");
@@ -140,8 +156,13 @@ namespace Dimensioner.Cli
             Console.WriteLine($"  - {labelReader.OrphanLabels.Count} orphan labels");
             Console.WriteLine($"  - {genericLabelReader.OrphanLabels.Count} orphan generic labels");
             Console.WriteLine();
+        }
 
-            // Print types.
+        private static void PrintTypes(XbrlSchemaSet schemaSet)
+        {
+            var elements = schemaSet.Components<XbrlElement>().ToList();
+            var elementTypes = elements.Select(e => e.Raws.Type)
+                .OrderBy(t => t?.ToString()).ToLookup(e => e).ToList();
             Console.WriteLine("Element types:");
             foreach (var type in elementTypes)
                 Console.WriteLine($"[{type.Count(),4}] {type.Key}");

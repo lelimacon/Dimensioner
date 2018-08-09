@@ -1,39 +1,112 @@
 ﻿using System;
+using System.Collections.Generic;
+using System.Diagnostics;
 using System.IO;
+using System.IO.Compression;
+using System.Linq;
 using System.Net;
+using System.Text;
 using System.Xml;
 
 namespace Dimensioner.Utils
 {
-    public class LocalUrlResolver
+    internal class LocalUrlResolver : IDisposable
     {
         private static readonly XmlUrlResolver XmlUrlResolver;
 
-        public bool UseCache { get; set; }
-        public string CacheDir { get; set; }
-        public IWebProxy Proxy { get; set; }
+        // Zip reading
+        private readonly static Object ArchiveLock;
+        private readonly string _tmpDir;
+        private FileStream _memoryStream;
+        private ZipArchive _archive;
+        private string _archivePath;
+
+        public bool UseCache { get; }
+        public string CacheDir { get; }
+        public IWebProxy Proxy { get; }
 
         static LocalUrlResolver()
         {
             XmlUrlResolver = new XmlUrlResolver();
+            ArchiveLock = new Object();
         }
 
-        public LocalUrlResolver()
+        public LocalUrlResolver(ReaderConfiguration configuration, string tmpDir)
         {
-            var cacheManager = new CacheManager();
-            CacheDir = cacheManager.SubDir("Cache");
+            UseCache = configuration.UseCache;
+            CacheDir = configuration.CacheDir;
+            Proxy = configuration.Proxy;
+            _tmpDir = tmpDir;
+        }
+
+        public void Dispose()
+        {
+            _memoryStream?.Dispose();
+            _archive?.Dispose();
+            if (_archivePath != null)
+                File.Delete(_archivePath);
+        }
+
+        /// <summary>
+        ///     Loads an archive and returns all of its entries.
+        ///     If the archive is online, download it to a temporary folder.
+        /// </summary>
+        /// <param name="path">The archive path, can be online.</param>
+        /// <returns>The (new) path to the archive, and the entries relative path to the archive.</returns>
+        public (string, IEnumerable<string>) LoadArchive(string path)
+        {
+            if (_archive != null)
+                throw new Exception($"An archive is already loaded");
+
+            var uri = new Uri(path);
+
+            // If file is on the web, save archive in temporary folder.
+            if (!uri.IsFile)
+            {
+                string name = Path.GetFileNameWithoutExtension(uri.AbsolutePath);
+                path = Path.Join(_tmpDir, $"{name}-{StringUtils.RandomString(8)}.zip");
+                _archivePath = path;
+                DownloadFile(uri, path);
+            }
+
+            // Initialize the archive.
+            _memoryStream = new FileStream(path, FileMode.Open);
+            _archive = new ZipArchive(_memoryStream, ZipArchiveMode.Read);
+            return (path, _archive.Entries.Select(e => e.FullName));
         }
 
         public StreamReader GetEntity(string path)
         {
+            if (path.Contains(".zip"))
+                return GetZipEntry(path);
             return GetEntity(new Uri(path));
+        }
+
+        private StreamReader GetZipEntry(string path)
+        {
+            if (_archive == null)
+                throw new Exception($"Attempt to read an unloading archive at {path}");
+            const string ext = ".zip";
+            string entryName = path.Substring(path.IndexOf(ext) + ext.Length + 1);
+            ZipArchiveEntry entry = _archive.GetEntry(entryName);
+            string fileContent;
+            lock (_archive)
+            {
+                using (Stream stream = entry.Open())
+                using (var reader = new StreamReader(stream))
+                    fileContent = reader.ReadToEnd();
+            }
+            byte[] buffer = Encoding.UTF8.GetBytes(fileContent);
+            return new StreamReader(new MemoryStream(buffer));
         }
 
         public StreamReader GetEntity(Uri absoluteUri)
         {
+            // Is file local.
             if (absoluteUri.IsFile)
                 return new StreamReader(absoluteUri.LocalPath);
 
+            // File is on the web, send web stream if cache denied.
             if (!UseCache)
             {
                 var client = new WebClient {Proxy = Proxy};
@@ -41,31 +114,51 @@ namespace Dimensioner.Utils
                 return new StreamReader(stream);
             }
 
-            // File is on the web, so first check the cache.
+            // Check the cache.
             var relativePath = absoluteUri.AbsoluteUri.Substring(7);
             string cachePath = Path.Combine(CacheDir, relativePath);
 
             // If the file is not cached, download it and cache it.
             if (!File.Exists(cachePath))
-                try
-                {
-                    Directory.CreateDirectory(Path.GetDirectoryName(cachePath));
-                    var client = new WebClient {Proxy = Proxy};
-                    client.DownloadFile(absoluteUri.AbsoluteUri, cachePath);
-                }
-                catch
-                {
-                    File.Delete(cachePath);
-                    throw;
-                }
+                DownloadFile(absoluteUri, cachePath);
 
             return new StreamReader(cachePath);
         }
 
+        /// <summary>
+        ///     Tries to download the file, and deletes it if there is a problem.
+        ///     Ensures that the folder to the path is created.
+        /// </summary>
+        /// <param name="source">The path to the web resource.</param>
+        /// <param name="targetPath">The path to download the file to.</param>
+        private void DownloadFile(Uri source, string targetPath)
+        {
+            try
+            {
+                Directory.CreateDirectory(Path.GetDirectoryName(targetPath));
+                using (var client = new WebClient { Proxy = Proxy })
+                {
+                    client.DownloadFile(source.AbsoluteUri, targetPath);
+                }
+            }
+            catch
+            {
+                File.Delete(targetPath);
+                throw;
+            }
+        }
+
         public static string Resolve(string sourceUri, string path)
         {
+            // Null check.
             if (string.IsNullOrEmpty(sourceUri) || IsAbsoluteUri(path))
                 return path.Replace('\\', '/');
+
+            // Exception for zip files.
+            if (sourceUri.EndsWith(".zip"))
+                return Path.Combine(sourceUri, path).Replace('\\', '/');
+
+            // Classic resolve.
             Uri uri = ResolveUri(new Uri(sourceUri), path);
             if (uri.IsFile)
                 return Uri.UnescapeDataString(uri.AbsolutePath).Replace('\\', '/');
@@ -74,8 +167,8 @@ namespace Dimensioner.Utils
 
         public static bool IsAbsoluteUri(string uri)
         {
-            if (!Uri.IsWellFormedUriString(uri, UriKind.RelativeOrAbsolute))
-                throw new ArgumentException("URL was in an invalid format", nameof(uri));
+            //if (!Uri.IsWellFormedUriString(uri, UriKind.RelativeOrAbsolute))
+            //    throw new ArgumentException("URL was in an invalid format", nameof(uri));
 
             return Uri.IsWellFormedUriString(uri, UriKind.Absolute);
         }

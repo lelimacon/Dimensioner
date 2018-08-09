@@ -1,40 +1,31 @@
-﻿using System.Net;
-using Dimensioner.Utils;
+﻿using Dimensioner.Utils;
+using System.Net;
 
 namespace Dimensioner
 {
     public class ReaderConfiguration
     {
-        internal LocalUrlResolver UrlResolver { get; }
-
         /// <summary>
         ///     Use the cache directory (true by default).
         /// </summary>
-        public bool UseCache
-        {
-            get => UrlResolver.UseCache;
-            set => UrlResolver.UseCache = value;
-        }
+        public bool UseCache { get; set; }
 
         /// <summary>
         ///     Specify the cache directory (%appdata%/{AppName} by default).
         /// </summary>
-        public string CacheDir
-        {
-            get => UrlResolver.CacheDir;
-            set => UrlResolver.CacheDir = value;
-        }
+        public string CacheDir { get; set; }
 
-        public IWebProxy Proxy
-        {
-            get => UrlResolver.Proxy;
-            set => UrlResolver.Proxy = value;
-        }
+        /// <summary>
+        ///     Specify a proxy.
+        /// </summary>
+        public IWebProxy Proxy { get; set; }
 
         public ReaderConfiguration()
         {
-            UrlResolver = new LocalUrlResolver();
+            var cacheManager = new CacheManager(true);
+            CacheDir = cacheManager.SubDir("Cache");
             UseCache = true;
+            Proxy = null;
         }
     }
 }

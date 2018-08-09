@@ -11,7 +11,7 @@ using Dimensioner.Utils;
 
 namespace Dimensioner
 {
-    public class TaxonomyReader
+    public class TaxonomyReader : IDisposable
     {
         private class ReadingInstance
         {
@@ -38,18 +38,27 @@ namespace Dimensioner
 
         private readonly ConcurrentDictionary<string, ReadingInstance> _instances;
         private readonly List<ComponentReaderTracker> _componentReaders;
+        private readonly List<ComponentReaderException> _errors;
+        private readonly LocalUrlResolver _urlResolver;
 
-        public ReaderConfiguration Configuration { get; set; }
         public bool Reading { get; private set; }
         public IReadOnlyList<ComponentReaderTracker> ComponentReaders => _componentReaders;
+        public IReadOnlyList<ComponentReaderException> Errors => _errors;
 
         public TaxonomyReader(ReaderConfiguration configuration)
         {
-            Configuration = configuration;
             _instances = new ConcurrentDictionary<string, ReadingInstance>();
             _componentReaders = new List<ComponentReaderTracker>();
+            _errors = new List<ComponentReaderException>();
+            var cacheManager = new CacheManager(true);
+            _urlResolver = new LocalUrlResolver(configuration, cacheManager.SubDir("Temporary"));
 
             Reading = false;
+        }
+
+        public void Dispose()
+        {
+            _urlResolver.Dispose();
         }
 
         public TaxonomyReader Register<T>()
@@ -69,11 +78,57 @@ namespace Dimensioner
 
         public XbrlSchemaSet Read(string path)
         {
-            Reading = true;
-            path = LocalUrlResolver.Resolve(null, path);
-            var baseSchema = new XbrlSchema(path);
-            Queue(baseSchema);
+            // Format the path.
+            path = LocalUrlResolver.Resolve(AssemblyUtils.AssemblyPath, path);
 
+            // Load an archive.
+            if (path.Contains(".zip"))
+                return ReadZip(path);
+
+            if (Reading)
+                throw new Exception("Another entry point is already being read with this instance.");
+            Reading = true;
+
+            // Load a directory.
+            if (Directory.Exists(path))
+            {
+                var directory = new DirectoryInfo(path);
+                QueueChildren(directory);
+            }
+
+            // Load a schema (entry point).
+            else
+            {
+                var baseSchema = new XbrlSchema(path);
+                Queue(baseSchema);
+            }
+
+            return Read();
+        }
+
+        public XbrlSchemaSet ReadZip(string path)
+        {
+            if (Reading)
+                throw new Exception("Another entry point is already being read with this instance.");
+            Reading = true;
+
+            (var tmpPath, var entries) = _urlResolver.LoadArchive(path);
+            foreach (var entry in entries.Where(e => e.EndsWith(".xsd")))
+                Queue(tmpPath, entry, null);
+            return Read();
+        }
+
+        private void QueueChildren(DirectoryInfo directory)
+        {
+            var schemas = directory.GetFiles().Where(f => f.Name.EndsWith(".xsd"));
+            foreach (var schema in schemas)
+                Queue(null, schema.FullName, null);
+            foreach (var subDir in directory.GetDirectories())
+                QueueChildren(subDir);
+        }
+        
+        private XbrlSchemaSet Read()
+        {
             // Wait for all threads in pool to calculate.
             do
             {
@@ -172,7 +227,7 @@ namespace Dimensioner
 
         private StreamReader GetEntity(string path)
         {
-            return Configuration.UrlResolver.GetEntity(path);
+            return _urlResolver.GetEntity(path);
         }
 
         private Linkbase ReadLinkbase(XbrlSchema schema, XElement node)
@@ -196,14 +251,22 @@ namespace Dimensioner
 
         private void ReadComponents(Modulable modulable, XDocument document)
         {
-            foreach (var reader in _componentReaders)
+            foreach (var tracker in _componentReaders)
             {
                 var timer = new Stopwatch();
+                IEnumerable<TaxonomyComponent> components = null;
                 timer.Start();
-                var components = reader.Reader.Read(modulable, document);
+                try
+                {
+                    components = tracker.Reader.Read(modulable, document);
+                }
+                catch (Exception e)
+                {
+                    _errors.Add(new ComponentReaderException(tracker.Reader.GetType(), e));
+                }
                 timer.Stop();
+                tracker.Elapsed += timer.Elapsed;
                 modulable.Add(components);
-                reader.Elapsed += timer.Elapsed;
             }
         }
 

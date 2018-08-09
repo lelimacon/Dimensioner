@@ -5,8 +5,8 @@ namespace Dimensioner.Utils
 {
     public class CacheManager
     {
-        private static string _generalAppDataPath;
         private static string _appDataPath;
+        private static string _cachePath;
 
         public string CompanyName { get; }
 
@@ -15,35 +15,33 @@ namespace Dimensioner.Utils
         /// <summary>
         ///     Gets the path of the Windows AppData directory.
         /// </summary>
-        public static string AppDataBaseDir => _generalAppDataPath
-                                               ?? (_generalAppDataPath =
-                                                   Environment.GetFolderPath(Environment.SpecialFolder
-                                                       .ApplicationData));
+        public static string AppDataDir => _appDataPath ??
+            (_appDataPath = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData));
 
         /// <summary>
         ///     Gets the path to this application's appdata folder.
         /// </summary>
-        public string AppDataDir => _appDataPath
-                                    ?? (_appDataPath = Path.Combine(AppDataBaseDir, CompanyName, AppName));
-
-        public string SubDir(string name)
-        {
-            return Path.Combine(AppDataDir, name);
-        }
+        public string CacheDir => _cachePath ??
+            (_cachePath = Path.Combine(AppDataDir, CompanyName, AppName));
 
         /// <summary>
         ///     Infers the company name and application name from the executing assembly.
         /// </summary>
-        public CacheManager()
+        public CacheManager(bool ignoreCompany)
         {
-            CompanyName = AssemblyUtils.CompanyName;
+            CompanyName = ignoreCompany ? "" : AssemblyUtils.CompanyName;
             AppName = AssemblyUtils.ProductName;
         }
 
         public CacheManager(string companyName, string appName)
         {
-            CompanyName = companyName;
-            AppName = appName;
+            CompanyName = companyName ?? throw new ArgumentNullException(nameof(companyName));
+            AppName = appName ?? throw new ArgumentNullException(nameof(appName));
+        }
+
+        public string SubDir(string name)
+        {
+            return Path.Combine(CacheDir, name);
         }
 
         /// <summary>
@@ -51,7 +49,7 @@ namespace Dimensioner.Utils
         /// </summary>
         public void Save(string filename, byte[] content, bool overwrite = true)
         {
-            string path = Path.Combine(AppDataDir, filename);
+            string path = Path.Combine(CacheDir, filename);
             if (!overwrite && File.Exists(path))
                 return;
             File.WriteAllBytes(path, content);

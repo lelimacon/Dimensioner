@@ -39,7 +39,7 @@ namespace Dimensioner.Components.Calculations
         private Calculation BuildCalculation(Linkbase linkbase, XElement node)
         {
             string role = node.Attr(Ns.Xlink, "role");
-            var roots = TaxonomyReader.ToLocatorGraph(linkbase.Path, node, true);
+            var roots = TaxonomyReader.ToLocatorGraph(linkbase.Path, node, false);
 
             // Create the definition.
             XbrlSchema schema = linkbase.Schema;
