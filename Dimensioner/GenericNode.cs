@@ -5,7 +5,7 @@ namespace Dimensioner
 {
     public class GenericArc
     {
-        //public int? Order { get; set; }
+        public double? Order { get; set; }
         public Arcrole Arcrole { get; set; }
     }
 

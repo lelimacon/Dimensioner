@@ -11,11 +11,13 @@ namespace Dimensioner.Components.Calculations
 {
     public class CalculationReader : TaxonomyComponentReader
     {
-        private readonly ConcurrentDictionary<Calculation, TmpLocator> _arcs;
+        private readonly ConcurrentDictionary<CalculationLink, TmpLink> _links;
+        private readonly ConcurrentDictionary<CalculationArc, TmpArc> _arcs;
 
         public CalculationReader()
         {
-            _arcs = new ConcurrentDictionary<Calculation, TmpLocator>();
+            _links = new ConcurrentDictionary<CalculationLink, TmpLink>();
+            _arcs = new ConcurrentDictionary<CalculationArc, TmpArc>();
         }
 
         public override IEnumerable<TaxonomyComponent> Read(Linkbase linkbase, XDocument document)
@@ -25,82 +27,94 @@ namespace Dimensioner.Components.Calculations
                 return null;
 
             // Read and add calculation shells.
-            var calculations = document.Root.Children(Ns.Link, "calculationLink")
-                .Select(n => BuildCalculation(linkbase, n)).ToList();
+            var calculationLinks = document.Root.Children(Ns.Link, "calculationLink")
+                .Select(n => BuildLink(linkbase, n)).ToList();
+
+            return calculationLinks;
+        }
+
+        private CalculationLink BuildLink(Linkbase linkbase, XElement node)
+        {
+            string role = node.Attr(Ns.Xlink, "role");
+
+            // Fetch locators and arcs.
+            var locs = node.Children(Ns.Link, "loc")
+                .ToDictionary(n => n.Attr(Ns.Xlink, "label"), n => new Href(linkbase.Path, n.Attr(Ns.Xlink, "href")));
+            var arcNodes = node.Children(Ns.Link, "calculationArc").ToList();
+            var arcs = arcNodes.ToDictionary(BuildArc, n => BuildTmpArc(n, locs));
 
             // Register the new references to the taxonomy reader.
-            var refs = _arcs.SelectMany(a => a.Value.Roots.Select(r => r.Locator.Href)).ToList();
+            var refs = locs.Select(l => l.Value).Distinct(h => h.AbsolutePath);
             foreach (Href href in refs)
                 QueueSchema(href.AbsolutePath);
 
-            return new List<TaxonomyComponent>();
+            // Create the link.
+            XbrlSchema schema = linkbase.Schema;
+            var link = new CalculationLink(schema, $"{schema.Namespace}:{role}")
+            {
+                Arcs = arcs.Select(a => a.Key).ToList(),
+            };
+
+            // Save temporary link and arcs.
+            foreach (var arc in arcs)
+                _arcs[arc.Key] = arc.Value;
+            _links[link] = new TmpLink { RoleUri = role };
+
+            return link;
         }
 
-        private Calculation BuildCalculation(Linkbase linkbase, XElement node)
+        private static CalculationArc BuildArc(XElement n)
         {
-            string role = node.Attr(Ns.Xlink, "role");
-            var roots = TaxonomyReader.ToLocatorGraph(linkbase.Path, node, false);
-
-            // Create the definition.
-            XbrlSchema schema = linkbase.Schema;
-            var calculation = new Calculation(schema, $"{schema.Namespace}:{role}");
-            _arcs[calculation] = new TmpLocator
+            string weight = n.Attr("weight");
+            string order = n.Attr("order");
+            return new CalculationArc
             {
-                RoleUri = role,
-                Roots = roots.ToList()
+                Weight = weight == null ? 0 : int.Parse(weight),
+                Order = weight == null ? 0 : double.Parse(order),
             };
-            return calculation;
+        }
+
+        private static TmpArc BuildTmpArc(XElement n, Dictionary<string, Href> locs)
+        {
+            return new TmpArc
+            {
+                Arcrole = n.Attr(Ns.Xlink, "role"),
+                From = locs[n.Attr(Ns.Xlink, "from")],
+                To = locs[n.Attr(Ns.Xlink, "to")],
+            };
         }
 
         public override IEnumerable<TaxonomyComponent> PostProcess(XbrlSchemaSet schemaSet)
         {
-            // Resolve locators and complete definitions.
+            // Resolve locators.
+            foreach (var e in _links)
+            {
+                CalculationLink link = e.Key;
+                TmpLink tmpLink = e.Value;
+                link.Role = schemaSet.GetComponent<Role>(tmpLink.RoleUri);
+            }
             foreach (var e in _arcs)
             {
-                Calculation calculation = e.Key;
-                TmpLocator loc = e.Value;
-                calculation.Roots = loc.Roots
-                    .Select(l => ConvertLocator(schemaSet, l, null)).ToList();
-                calculation.Role = schemaSet.GetComponent<Role>(loc.RoleUri);
+                CalculationArc arc = e.Key;
+                TmpArc tmpArc = e.Value;
+                arc.Arcrole = schemaSet.GetComponent<Arcrole>(tmpArc.Arcrole);
+                arc.From = schemaSet.GetComponent<XbrlElement>(tmpArc.From);
+                arc.To = schemaSet.GetComponent<XbrlElement>(tmpArc.To);
             }
 
-            return _arcs.Select(a => a.Key);
+            return _links.Select(l => l.Key);
         }
 
-        private CalculationNode ConvertLocator(XbrlSchemaSet schemaSet, LocatorNode loc, Arc arc)
+        private class TmpArc
         {
-            var element = schemaSet.GetComponent<XbrlElement>(loc.Locator.Href);
-            var node = new CalculationNode
-            {
-                Value = element,
-                Children = loc.Children
-                    .Select((l, i) => Pair(
-                        ConvertArc(schemaSet, loc.ChildArcs[i], l),
-                        ConvertLocator(schemaSet, l, arc)))
-                    .ToList()
-            };
-            return node;
+            public string Arcrole { get; set; }
+            public Href From { get; set; }
+            public Href To { get; set; }
         }
 
-        private CalculationArc ConvertArc(XbrlSchemaSet schemaSet, Arc arc, LocatorNode l)
-        {
-            string weightStr = arc.XNode.Attr("weight");
-            return new CalculationArc
-            {
-                Weight = weightStr == null ? 0 : int.Parse(weightStr),
-                Arcrole = schemaSet.GetComponent<Arcrole>(arc?.ArcRole)
-            };
-        }
-
-        private static KeyValuePair<TKey, TValue> Pair<TKey, TValue>(TKey key, TValue value)
-        {
-            return new KeyValuePair<TKey, TValue>(key, value);
-        }
-
-        private class TmpLocator
+        private class TmpLink
         {
             public string RoleUri { get; set; }
-            public List<LocatorNode> Roots { get; set; }
         }
     }
 }

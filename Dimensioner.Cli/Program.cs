@@ -74,39 +74,11 @@ namespace Dimensioner.Cli
                 return;
 
             PrintElements(schemaSet, labelReader, genericLabelReader);
-            //ExportLinkbase(schemaSet);
             //PrintTypes(schemaSet);
+            //ExportLinkbase(schemaSet);
+            PrintCalculationLinks(schemaSet, 10);
 
             Console.ReadLine();
-        }
-
-        private static void ExportLinkbase(XbrlSchemaSet schemaSet)
-        {
-            // Print linkbase.
-            Definition definition = schemaSet.Components<Definition>().First();
-            string desktopPath = Environment.GetFolderPath(Environment.SpecialFolder.Desktop);
-            string savePath = Path.Combine(desktopPath, "test-def.xml");
-
-            Console.WriteLine($"Exporting definition {definition.Role?.Uri}");
-            Console.WriteLine($"- Defined in {definition.Schema.Path}");
-            Console.WriteLine();
-
-            /*
-            byte[] linkbaseContent;
-            using (var stream = new MemoryStream())
-            {
-                definition.Write(stream);
-                linkbaseContent = stream.GetBuffer();
-            }
-            Console.WriteLine($"Example definition linkbase output: {savePath}");
-            //Console.WriteLine(Encoding.UTF8.GetString(linkbaseContent));
-            File.WriteAllBytes(savePath, linkbaseContent);
-            */
-
-            using (var stream = new FileStream(savePath, FileMode.Create))
-            {
-                definition.Write(stream);
-            }
         }
 
         private static void PrintElements(XbrlSchemaSet schemaSet, LabelReader labelReader,
@@ -119,7 +91,7 @@ namespace Dimensioner.Cli
             var roles = schemaSet.Components<Role>().ToList();
             var arcroles = schemaSet.Components<Arcrole>().ToList();
             var definitions = schemaSet.Components<Definition>().ToList();
-            var calculations = schemaSet.Components<Calculation>().ToList();
+            var calculations = schemaSet.Components<CalculationLink>().ToList();
             var presentations = schemaSet.Components<Presentation>().ToList();
             var tables = schemaSet.Components<Table>().ToList();
             var tableGroups = schemaSet.Components<TableGroup>().ToList();
@@ -166,6 +138,43 @@ namespace Dimensioner.Cli
             Console.WriteLine("Element types:");
             foreach (var type in elementTypes)
                 Console.WriteLine($"[{type.Count(),4}] {type.Key}");
+            Console.WriteLine();
+        }
+
+        private static void ExportLinkbase(XbrlSchemaSet schemaSet)
+        {
+            // Print linkbase.
+            Definition definition = schemaSet.Components<Definition>().First();
+            string desktopPath = Environment.GetFolderPath(Environment.SpecialFolder.Desktop);
+            string savePath = Path.Combine(desktopPath, "test-def.xml");
+
+            Console.WriteLine($"Exporting definition {definition.Role?.Uri}");
+            Console.WriteLine($"- Defined in {definition.Schema.Path}");
+            Console.WriteLine();
+
+            /*
+            byte[] linkbaseContent;
+            using (var stream = new MemoryStream())
+            {
+                definition.Write(stream);
+                linkbaseContent = stream.GetBuffer();
+            }
+            Console.WriteLine($"Example definition linkbase output: {savePath}");
+            //Console.WriteLine(Encoding.UTF8.GetString(linkbaseContent));
+            File.WriteAllBytes(savePath, linkbaseContent);
+            */
+
+            using (var stream = new FileStream(savePath, FileMode.Create))
+            {
+                definition.Write(stream);
+            }
+        }
+
+        private static void PrintCalculationLinks(XbrlSchemaSet schemaSet, int count)
+        {
+            Console.WriteLine($"{count} first calculation links:");
+            foreach (var link in schemaSet.Components<CalculationLink>().Take(count))
+                Console.WriteLine($"- {link.Role.Uri} ({link.Arcs.Count} arcs)");
             Console.WriteLine();
         }
     }
