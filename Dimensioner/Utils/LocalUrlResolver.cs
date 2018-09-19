@@ -13,6 +13,7 @@ namespace Dimensioner.Utils
     internal class LocalUrlResolver : IDisposable
     {
         private static readonly XmlUrlResolver XmlUrlResolver;
+        private static string _entryPoint;
 
         // Zip reading
         private readonly static Object ArchiveLock;
@@ -24,6 +25,19 @@ namespace Dimensioner.Utils
         public bool UseCache { get; }
         public string CacheDir { get; }
         public IWebProxy Proxy { get; }
+        public static string RootDir { get; private set; }
+        public static string EntryPoint
+        {
+            get { return _entryPoint; }
+            set
+            {
+                // Clean path.
+                _entryPoint = Resolve(null, value);
+
+                // Taxonomy probably changed: reset root directory.
+                RootDir = null;
+            }
+        }
 
         static LocalUrlResolver()
         {
@@ -106,7 +120,22 @@ namespace Dimensioner.Utils
             if (absoluteUri.IsFile)
                 return new StreamReader(absoluteUri.LocalPath);
 
-            // File is on the web, send web stream if cache denied.
+            // File is on the web.
+            var relativePath = absoluteUri.AbsoluteUri.Substring(7);
+
+            // Check the taxonomy root directory.
+            if (EntryPoint != null && RootDir != null || FindRootDir(EntryPoint, relativePath) != null)
+            {
+                string rootPath = Path.Combine(RootDir, relativePath);
+                if (File.Exists(rootPath))
+                {
+                    byte[] buffer = File.ReadAllBytes(rootPath);
+                    var stream = new MemoryStream(buffer);
+                    return new StreamReader(stream);
+                }
+            }
+
+            // Send web stream if cache denied.
             if (!UseCache)
             {
                 var client = new WebClient {Proxy = Proxy};
@@ -115,7 +144,6 @@ namespace Dimensioner.Utils
             }
 
             // Check the cache.
-            var relativePath = absoluteUri.AbsoluteUri.Substring(7);
             string cachePath = Path.Combine(CacheDir, relativePath);
 
             // If the file is not cached, download it and cache it.
@@ -123,6 +151,17 @@ namespace Dimensioner.Utils
                 DownloadFile(absoluteUri, cachePath);
 
             return new StreamReader(cachePath);
+        }
+
+        private string FindRootDir(string sourceDir, string relativePath)
+        {
+            if (File.Exists(Path.Combine(sourceDir, relativePath)))
+            {
+                RootDir = sourceDir;
+                return sourceDir;
+            }
+            string parentDir = Directory.GetParent(sourceDir)?.FullName;
+            return string.IsNullOrEmpty(parentDir) ? null : FindRootDir(parentDir, relativePath);
         }
 
         /// <summary>
@@ -140,6 +179,11 @@ namespace Dimensioner.Utils
                 {
                     client.DownloadFile(source.AbsoluteUri, targetPath);
                 }
+
+                // Check file size (404 will produce empty file).
+                var file = new FileInfo(targetPath);
+                if (file.Length == 0)
+                    throw new Exception($"File downloaded from '{source}' is empty (probably 404)");
             }
             catch
             {

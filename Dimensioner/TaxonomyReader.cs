@@ -38,18 +38,18 @@ namespace Dimensioner
 
         private readonly ConcurrentDictionary<string, ReadingInstance> _instances;
         private readonly List<ComponentReaderTracker> _componentReaders;
-        private readonly List<ComponentReaderException> _errors;
+        private readonly ConcurrentBag<ComponentReaderException> _errors;
         private readonly LocalUrlResolver _urlResolver;
 
         public bool Reading { get; private set; }
         public IReadOnlyList<ComponentReaderTracker> ComponentReaders => _componentReaders;
-        public IReadOnlyList<ComponentReaderException> Errors => _errors;
+        public IReadOnlyList<ComponentReaderException> Errors => _errors.ToList();
 
         public TaxonomyReader(ReaderConfiguration configuration)
         {
             _instances = new ConcurrentDictionary<string, ReadingInstance>();
             _componentReaders = new List<ComponentReaderTracker>();
-            _errors = new List<ComponentReaderException>();
+            _errors = new ConcurrentBag<ComponentReaderException>();
             var cacheManager = new CacheManager(true);
             _urlResolver = new LocalUrlResolver(configuration, cacheManager.SubDir("Temporary"));
 
@@ -79,7 +79,8 @@ namespace Dimensioner
         public XbrlSchemaSet Read(string path)
         {
             // Format the path.
-            path = LocalUrlResolver.Resolve(AssemblyUtils.AssemblyPath, path);
+            path = Path.GetFullPath(path);
+            LocalUrlResolver.EntryPoint = path;
 
             // Load an archive.
             if (path.Contains(".zip"))
@@ -108,6 +109,10 @@ namespace Dimensioner
 
         public XbrlSchemaSet ReadZip(string path)
         {
+            // Format the path.
+            path = Path.GetFullPath(path);
+            LocalUrlResolver.EntryPoint = path;
+
             if (Reading)
                 throw new Exception("Another entry point is already being read with this instance.");
             Reading = true;
@@ -180,7 +185,21 @@ namespace Dimensioner
         {
             var instance = new ReadingInstance(schema);
             _instances[schema.Path] = instance;
-            ThreadPool.QueueUserWorkItem(i => Read(i), instance, true);
+            ThreadPool.QueueUserWorkItem(i => ReadSafe(i), instance, true);
+        }
+
+        private XbrlSchema ReadSafe(ReadingInstance instance)
+        {
+            XbrlSchema schema = null;
+            try
+            {
+                schema = Read(instance);
+            }
+            catch (Exception e)
+            {
+                _errors.Add(new ComponentReaderException(typeof(TaxonomyReader), e));
+            }
+            return schema;
         }
 
         private XbrlSchema Read(ReadingInstance instance)
