@@ -185,7 +185,7 @@ namespace Dimensioner
         {
             var instance = new ReadingInstance(schema);
             _instances[schema.Path] = instance;
-            ThreadPool.QueueUserWorkItem(i => ReadSafe(i), instance, true);
+            ThreadPool.QueueUserWorkItem(i => ReadSafe((ReadingInstance)i), instance);
         }
 
         private XbrlSchema ReadSafe(ReadingInstance instance)

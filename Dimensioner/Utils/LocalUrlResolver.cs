@@ -78,7 +78,7 @@ namespace Dimensioner.Utils
             if (!uri.IsFile)
             {
                 string name = Path.GetFileNameWithoutExtension(uri.AbsolutePath);
-                path = Path.Join(_tmpDir, $"{name}-{StringUtils.RandomString(8)}.zip");
+                path = $"{_tmpDir}/{name}-{StringUtils.RandomString(8)}.zip";
                 _archivePath = path;
                 DownloadFile(uri, path);
             }

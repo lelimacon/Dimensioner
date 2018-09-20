@@ -40,7 +40,7 @@ namespace Dimensioner.Components.Elements
                 Name = node.Attr("name"),
                 Type = ToElementType(type),
                 Abstract = node.Attr("abstract") == "true",
-                Period = ToPeriodType(period),
+                Period = PeriodType.Default.TryParse(period),
                 CreationDate = string.IsNullOrEmpty(creationDateStr)
                     ? null as DateTime?
                     : DateTime.Parse(creationDateStr),
@@ -84,14 +84,7 @@ namespace Dimensioner.Components.Elements
                 //throw new IndexOutOfRangeException();
             }
         }
-
-        private static PeriodType ToPeriodType(string period)
-        {
-            if (period == null)
-                return PeriodType.Default;
-            return Enum.Parse<PeriodType>(period, true);
-        }
-
+        
         public override IEnumerable<TaxonomyComponent> PostProcess(XbrlSchemaSet schemaSet)
         {
             // Return the arcroles (can also be found in the linkbases via the schemaSet).
