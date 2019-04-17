@@ -4,7 +4,7 @@ using System.Xml.Linq;
 
 namespace Dimensioner.Utils
 {
-    internal static class XUtils
+    public static class XUtils
     {
         public static XName ToXName(this XElement node, string name)
         {

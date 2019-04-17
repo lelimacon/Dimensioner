@@ -1,11 +1,15 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
-# Visual Studio 15
-VisualStudioVersion = 15.0.27703.2026
+# Visual Studio Version 16
+VisualStudioVersion = 16.0.28711.60
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Dimensioner", "Dimensioner\Dimensioner.csproj", "{AB1A6862-A1C6-4AB4-B775-8D22AE74284B}"
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Dimensioner.Cli", "Dimensioner.Cli\Dimensioner.Cli.csproj", "{FDC584FF-F608-425D-9E6A-26BD20B6AE4F}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Dimensioner.Trees", "Dimensioner.Trees\Dimensioner.Trees.csproj", "{3DA2C255-222C-404F-8C4A-9CF379357F33}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Dimensioner.Tables", "Dimensioner.Tables\Dimensioner.Tables.csproj", "{F87FD645-9468-4D1A-B004-3995DAFCA953}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -21,6 +25,14 @@ Global
 		{FDC584FF-F608-425D-9E6A-26BD20B6AE4F}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{FDC584FF-F608-425D-9E6A-26BD20B6AE4F}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{FDC584FF-F608-425D-9E6A-26BD20B6AE4F}.Release|Any CPU.Build.0 = Release|Any CPU
+		{3DA2C255-222C-404F-8C4A-9CF379357F33}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{3DA2C255-222C-404F-8C4A-9CF379357F33}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{3DA2C255-222C-404F-8C4A-9CF379357F33}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{3DA2C255-222C-404F-8C4A-9CF379357F33}.Release|Any CPU.Build.0 = Release|Any CPU
+		{F87FD645-9468-4D1A-B004-3995DAFCA953}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{F87FD645-9468-4D1A-B004-3995DAFCA953}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{F87FD645-9468-4D1A-B004-3995DAFCA953}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{F87FD645-9468-4D1A-B004-3995DAFCA953}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

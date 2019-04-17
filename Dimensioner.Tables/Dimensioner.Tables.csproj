@@ -1,13 +1,10 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <OutputType>Exe</OutputType>
-    <TargetFramework>netcoreapp2.1</TargetFramework>
-    <Authors>lelimacon</Authors>
+    <TargetFramework>netstandard2.0</TargetFramework>
   </PropertyGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\Dimensioner.Tables\Dimensioner.Tables.csproj" />
     <ProjectReference Include="..\Dimensioner.Trees\Dimensioner.Trees.csproj" />
     <ProjectReference Include="..\Dimensioner\Dimensioner.csproj" />
   </ItemGroup>

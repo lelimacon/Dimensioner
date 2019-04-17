@@ -5,12 +5,12 @@ using System.Linq;
 using System.Net;
 using Dimensioner.Components.Arcroles;
 using Dimensioner.Components.Calculations;
-using Dimensioner.Components.Definitions;
+using Dimensioner.Trees.DefinitionTrees;
 using Dimensioner.Components.Elements;
 using Dimensioner.Components.Labels;
-using Dimensioner.Components.Presentations;
+using Dimensioner.Trees.PresentationTrees;
 using Dimensioner.Components.Roles;
-using Dimensioner.Components.Tables;
+using Dimensioner.Tables;
 
 namespace Dimensioner.Cli
 {
@@ -115,9 +115,9 @@ namespace Dimensioner.Cli
                 .OrderBy(t => t?.ToString()).ToLookup(e => e).ToList();
             var roles = schemaSet.Components<Role>().ToList();
             var arcroles = schemaSet.Components<Arcrole>().ToList();
-            var definitions = schemaSet.Components<Definition>().ToList();
+            var definitions = schemaSet.Components<DefinitionTree>().ToList();
             var calculations = schemaSet.Components<CalculationLink>().ToList();
-            var presentations = schemaSet.Components<Presentation>().ToList();
+            var presentations = schemaSet.Components<PresentationTree>().ToList();
             var tables = schemaSet.Components<Table>().ToList();
             var tableGroups = schemaSet.Components<TableGroup>().ToList();
             var allComps = schemaSet.Schemas
@@ -149,7 +149,7 @@ namespace Dimensioner.Cli
             Console.WriteLine(
                 $"  - {labelized.OfType<Breakdown>().Count()}/{labelizable.OfType<Breakdown>().Count()} of which are breakdowns");
             Console.WriteLine(
-                $"  - {labelized.OfType<Components.Tables.DefinitionNode>().Count()}/{labelizable.OfType<Components.Tables.DefinitionNode>().Count()} of which are definition nodes (rule or aspect)");
+                $"  - {labelized.OfType<Dimensioner.Tables.DefinitionNode>().Count()}/{labelizable.OfType<Dimensioner.Tables.DefinitionNode>().Count()} of which are definition nodes (rule or aspect)");
             Console.WriteLine($"  - {labelReader.OrphanLabels.Count} orphan labels");
             Console.WriteLine($"  - {genericLabelReader.OrphanLabels.Count} orphan generic labels");
             Console.WriteLine();
@@ -169,7 +169,7 @@ namespace Dimensioner.Cli
         private static void ExportLinkbase(XbrlSchemaSet schemaSet)
         {
             // Print linkbase.
-            Definition definition = schemaSet.Components<Definition>().First();
+            DefinitionTree definition = schemaSet.Components<DefinitionTree>().First();
             string desktopPath = Environment.GetFolderPath(Environment.SpecialFolder.Desktop);
             string savePath = Path.Combine(desktopPath, "test-def.xml");
 
