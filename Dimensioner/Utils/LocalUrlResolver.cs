@@ -122,7 +122,7 @@ namespace Dimensioner.Utils
                 return new StreamReader(absoluteUri.LocalPath);
 
             // File is on the web.
-            var relativePath = absoluteUri.AbsoluteUri.Substring(7);
+            var relativePath = absoluteUri.Host + absoluteUri.AbsolutePath;
 
             // Check the taxonomy root directory.
             if (EntryPoint != null && RootDir != null || FindRootDir(EntryPoint, relativePath) != null)
