@@ -2,10 +2,8 @@
 
 namespace Dimensioner.Components.Calculations
 {
-    public class CalculationArc : GenericArc
+    public class CalculationArc : Arc
     {
         public int Weight { get; set; }
-        public XbrlElement From { get; set; }
-        public XbrlElement To { get; set; }
     }
 }

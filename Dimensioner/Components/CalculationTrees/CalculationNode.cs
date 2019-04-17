@@ -6,7 +6,7 @@ namespace Dimensioner.Components.CalculationTrees
     {
     }
 
-    public class CalculationArc : GenericArc
+    public class CalculationArc : Arc
     {
         public int Weight { get; set; }
     }

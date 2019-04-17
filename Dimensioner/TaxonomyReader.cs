@@ -324,7 +324,7 @@ namespace Dimensioner
             var arcs = node.Elements()
                 .Where(n => n.Name.Namespace == Ns.Link
                             && n.Attr(Ns.Xlink, "type") == "arc")
-                .Select(n => new Arc(basePath, n))
+                .Select(n => new XArc(basePath, n))
                 .OrderBy(a => a.Order)
                 .ToList();
 

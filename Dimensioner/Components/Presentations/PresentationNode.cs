@@ -6,7 +6,7 @@ namespace Dimensioner.Components.Presentations
     {
     }
 
-    public class PresentationArc : GenericArc
+    public class PresentationArc : Arc
     {
     }
 }

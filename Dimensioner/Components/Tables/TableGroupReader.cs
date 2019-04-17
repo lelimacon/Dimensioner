@@ -75,7 +75,7 @@ namespace Dimensioner.Components.Tables
             return _arcs.Select(a => a.Key);
         }
 
-        private TableGroupNode ConvertLocator(XbrlSchemaSet schemaSet, LocatorNode loc, Arc arc)
+        private TableGroupNode ConvertLocator(XbrlSchemaSet schemaSet, LocatorNode loc, XArc arc)
         {
             var element = schemaSet.GetComponent<XbrlElement>(loc.Locator.Href);
             var table = schemaSet.GetComponent<Table>(loc.Locator.Href);

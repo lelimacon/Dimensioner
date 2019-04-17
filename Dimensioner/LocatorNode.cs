@@ -15,7 +15,7 @@ namespace Dimensioner
         /// <summary>
         ///     The arc to the child locator.
         /// </summary>
-        public List<Arc> ChildArcs { get; set; }
+        public List<XArc> ChildArcs { get; set; }
 
         /*
         /// <summary>

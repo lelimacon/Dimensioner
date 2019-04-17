@@ -68,7 +68,7 @@ namespace Dimensioner.Components.Presentations
             return _arcs.Select(a => a.Key);
         }
 
-        private PresentationNode ConvertLocator(XbrlSchemaSet schemaSet, LocatorNode loc, Arc arc)
+        private PresentationNode ConvertLocator(XbrlSchemaSet schemaSet, LocatorNode loc, XArc arc)
         {
             var element = schemaSet.GetComponent<XbrlElement>(loc.Locator.Href);
             var node = new PresentationNode
@@ -83,7 +83,7 @@ namespace Dimensioner.Components.Presentations
             return node;
         }
 
-        private PresentationArc ConvertArc(XbrlSchemaSet schemaSet, Arc arc, LocatorNode l)
+        private PresentationArc ConvertArc(XbrlSchemaSet schemaSet, XArc arc, LocatorNode l)
         {
             return new PresentationArc
             {

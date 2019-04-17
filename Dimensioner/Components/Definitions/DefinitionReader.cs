@@ -78,7 +78,7 @@ namespace Dimensioner.Components.Definitions
             return _arcs.Select(a => a.Key);
         }
 
-        private DefinitionNode ConvertLocator(XbrlSchemaSet schemaSet, LocatorNode loc, Arc arc)
+        private DefinitionNode ConvertLocator(XbrlSchemaSet schemaSet, LocatorNode loc, XArc arc)
         {
             var element = schemaSet.GetComponent<XbrlElement>(loc.Locator.Href);
             var arcrole = schemaSet.GetComponent<Arcrole>(arc?.ArcRole);

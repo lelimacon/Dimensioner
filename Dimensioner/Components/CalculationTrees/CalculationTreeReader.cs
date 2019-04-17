@@ -67,7 +67,7 @@ namespace Dimensioner.Components.CalculationTrees
             return _arcs.Select(a => a.Key);
         }
 
-        private CalculationNode ConvertLocator(XbrlSchemaSet schemaSet, LocatorNode loc, Arc arc)
+        private CalculationNode ConvertLocator(XbrlSchemaSet schemaSet, LocatorNode loc, XArc arc)
         {
             var element = schemaSet.GetComponent<XbrlElement>(loc.Locator.Href);
             var node = new CalculationNode
@@ -82,7 +82,7 @@ namespace Dimensioner.Components.CalculationTrees
             return node;
         }
 
-        private CalculationArc ConvertArc(XbrlSchemaSet schemaSet, Arc arc, LocatorNode l)
+        private CalculationArc ConvertArc(XbrlSchemaSet schemaSet, XArc arc, LocatorNode l)
         {
             string weightStr = arc.XNode.Attr("weight");
             return new CalculationArc

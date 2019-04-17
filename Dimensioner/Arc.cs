@@ -1,17 +1,13 @@
-﻿using System.Xml.Linq;
-using Dimensioner.Utils;
+﻿using Dimensioner.Components.Arcroles;
+using Dimensioner.Components.Elements;
 
 namespace Dimensioner
 {
-    public class Arc : XlinkNode
+    public class Arc
     {
+        public XbrlElement From { get; set; }
+        public XbrlElement To { get; set; }
         public double? Order { get; set; }
-
-        public Arc(string basePath, XElement node)
-            : base(basePath, node)
-        {
-            string orderStr = node.Attr("order");
-            Order = orderStr == null ? null as double? : double.Parse(orderStr);
-        }
+        public Arcrole Arcrole { get; set; }
     }
 }
