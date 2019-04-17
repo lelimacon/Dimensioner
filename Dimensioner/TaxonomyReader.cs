@@ -13,14 +13,25 @@ namespace Dimensioner
 {
     public class TaxonomyReader : IDisposable
     {
-        private class ReadingInstance
+        public enum ReadingStatus
         {
-            public bool Done { get; set; }
-            public XbrlSchema Schema { get; set; }
+            Pending,
+            Reading,
+            Success,
+            Error,
+        }
+
+        public class ReadingInstance
+        {
+            public ReadingStatus Status { get; internal set; }
+            public XbrlSchema Schema { get; internal set; }
+
+            public bool Done => Status == ReadingStatus.Success || Status == ReadingStatus.Error;
 
             public ReadingInstance(XbrlSchema schema)
             {
                 Schema = schema;
+                Status = ReadingStatus.Pending;
             }
         }
 
@@ -42,8 +53,12 @@ namespace Dimensioner
         private readonly LocalUrlResolver _urlResolver;
 
         public bool Reading { get; private set; }
+        public IReadOnlyList<ReadingInstance> ReadingInstances => _instances.Select(i => i.Value).ToList();
         public IReadOnlyList<ComponentReaderTracker> ComponentReaders => _componentReaders;
         public IReadOnlyList<ComponentReaderException> Errors => _errors.ToList();
+
+        public event Action<ReadingInstance> ReadingInstanceStarted;
+        public event Action<ReadingInstance> ReadingInstanceEnded;
 
         public TaxonomyReader(ReaderConfiguration configuration)
         {
@@ -79,7 +94,7 @@ namespace Dimensioner
         public XbrlSchemaSet Read(string path)
         {
             // Format the path.
-            path = Path.GetFullPath(path);
+            path = LocalUrlResolver.Resolve(Path.GetFullPath("."), path);
             LocalUrlResolver.EntryPoint = path;
 
             // Load an archive.
@@ -137,10 +152,13 @@ namespace Dimensioner
             // Wait for all threads in pool to calculate.
             do
             {
-                Thread.Sleep(100);
+                Thread.Sleep(300);
             } while (_instances.Any(i => !i.Value.Done));
 
             Reading = false;
+
+            Console.WriteLine("Finished reading.");
+            Console.WriteLine("Post processing...");
 
             // Create schema set and add instances.
             var schemaSet = new XbrlSchemaSet();
@@ -149,6 +167,7 @@ namespace Dimensioner
             // Let the components post process the schema set.
             ReadComponents(schemaSet, null);
 
+            Console.WriteLine("Done.");
             return schemaSet;
         }
 
@@ -164,6 +183,7 @@ namespace Dimensioner
         {
             if (!Reading)
                 throw new Exception("Instances must be pushed while reading the taxonomy.");
+
             path = LocalUrlResolver.Resolve(basePath, path);
             XbrlSchema schema;
             lock (_instances)
@@ -190,22 +210,24 @@ namespace Dimensioner
 
         private XbrlSchema ReadSafe(ReadingInstance instance)
         {
-            XbrlSchema schema = null;
+            ReadingInstanceStarted?.Invoke(instance);
             try
             {
-                schema = Read(instance);
+                Read(instance.Schema);
+                instance.Status = ReadingStatus.Success;
             }
             catch (Exception e)
             {
+                instance.Status = ReadingStatus.Error;
                 _errors.Add(new ComponentReaderException(typeof(TaxonomyReader), e));
             }
-            return schema;
+            ReadingInstanceEnded?.Invoke(instance);
+            return instance.Schema;
         }
 
-        private XbrlSchema Read(ReadingInstance instance)
+        private void Read(XbrlSchema schema)
         {
             //Console.WriteLine($"Reading instance {instance.Schema.Path}");
-            XbrlSchema schema = instance.Schema;
             XDocument doc;
             using (var stream = GetEntity(schema.Path))
             {
@@ -239,9 +261,6 @@ namespace Dimensioner
 
             // Let the components read the schema.
             ReadComponents(schema, doc);
-
-            instance.Done = true;
-            return schema;
         }
 
         private StreamReader GetEntity(string path)

@@ -28,7 +28,8 @@ namespace Dimensioner.Cli
             proxy.Credentials = CredentialCache.DefaultCredentials;
             var config = new ReaderConfiguration
             {
-                UseCache = true
+                UseCache = true,
+                Proxy = proxy,
             };
             XbrlSchemaSet schemaSet = null;
             var labelReader = new LabelReader();
@@ -50,6 +51,8 @@ namespace Dimensioner.Cli
                 Console.WriteLine();
 
                 w.Start();
+                reader.ReadingInstanceStarted += i => PrintReadingStatus(reader);
+                reader.ReadingInstanceEnded += i => PrintReadingStatus(reader);
                 schemaSet = reader.Read(EntryPath);
                 schemaSet.Compile();
                 w.Stop();
@@ -76,9 +79,31 @@ namespace Dimensioner.Cli
             PrintElements(schemaSet, labelReader, genericLabelReader);
             //PrintTypes(schemaSet);
             //ExportLinkbase(schemaSet);
-            PrintCalculationLinks(schemaSet, 10);
+            //PrintCalculationLinks(schemaSet, 10);
 
             Console.ReadLine();
+        }
+
+        private static void PrintReadingStatus(TaxonomyReader reader)
+        {
+            string progress = new string(reader.ReadingInstances.Select(r => ShortStatus(r)).ToArray());
+            Console.WriteLine($"Schema reading progress: [{progress}]");
+        }
+
+        private static char ShortStatus(TaxonomyReader.ReadingInstance r)
+        {
+            switch (r.Status)
+            {
+                case TaxonomyReader.ReadingStatus.Pending:
+                    return '-';
+                case TaxonomyReader.ReadingStatus.Reading:
+                    return 'O';
+                case TaxonomyReader.ReadingStatus.Success:
+                    return 'X';
+                case TaxonomyReader.ReadingStatus.Error:
+                    return '!';
+            }
+            return r.Done ? 'X' : 'O';
         }
 
         private static void PrintElements(XbrlSchemaSet schemaSet, LabelReader labelReader,

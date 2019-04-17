@@ -41,6 +41,7 @@ namespace Dimensioner.Utils
 
         static LocalUrlResolver()
         {
+            //ServicePointManager.SecurityProtocol = SecurityProtocolType.Ssl3 | SecurityProtocolType.Tls | SecurityProtocolType.Tls11 | SecurityProtocolType.Tls12;
             XmlUrlResolver = new XmlUrlResolver();
             ArchiveLock = new Object();
         }
