@@ -10,13 +10,12 @@ using Dimensioner.Utils;
 
 namespace Dimensioner.Trees.PresentationTrees
 {
-    public class PresentationReader : TaxonomyComponentReader
+    public class PresentationTreeReader : TaxonomyComponentReader
     {
         private readonly ConcurrentDictionary<PresentationTree, TmpLocator> _arcs;
 
-        public PresentationReader()
+        public PresentationTreeReader()
         {
-            //_definitions = new Definitions();
             _arcs = new ConcurrentDictionary<PresentationTree, TmpLocator>();
         }
 

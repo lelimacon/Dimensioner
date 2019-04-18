@@ -8,7 +8,6 @@ using Dimensioner.Components.Calculations;
 using Dimensioner.Trees.DefinitionTrees;
 using Dimensioner.Components.Elements;
 using Dimensioner.Components.Labels;
-using Dimensioner.Trees.PresentationTrees;
 using Dimensioner.Components.Roles;
 using Dimensioner.Tables;
 
@@ -115,9 +114,9 @@ namespace Dimensioner.Cli
                 .OrderBy(t => t?.ToString()).ToLookup(e => e).ToList();
             var roles = schemaSet.Components<Role>().ToList();
             var arcroles = schemaSet.Components<Arcrole>().ToList();
-            var definitions = schemaSet.Components<DefinitionTree>().ToList();
+            var definitions = schemaSet.Components<DefinitionLink>().ToList();
             var calculations = schemaSet.Components<CalculationLink>().ToList();
-            var presentations = schemaSet.Components<PresentationTree>().ToList();
+            var presentations = schemaSet.Components<PresentationLink>().ToList();
             var tables = schemaSet.Components<Table>().ToList();
             var tableGroups = schemaSet.Components<TableGroup>().ToList();
             var allComps = schemaSet.Schemas

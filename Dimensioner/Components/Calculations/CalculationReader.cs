@@ -23,7 +23,7 @@ namespace Dimensioner.Components.Calculations
             string weight = n.Attr("weight");
             return new CalculationArc
             {
-                Order = weight == null ? 0 : double.Parse(order),
+                Order = order == null ? 0 : double.Parse(order),
                 Weight = weight == null ? 0 : int.Parse(weight),
             };
         }

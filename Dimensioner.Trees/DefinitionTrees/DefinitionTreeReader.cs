@@ -10,12 +10,12 @@ using Dimensioner.Utils;
 
 namespace Dimensioner.Trees.DefinitionTrees
 {
-    public class DefinitionReader : TaxonomyComponentReader
+    public class DefinitioTreeReader : TaxonomyComponentReader
     {
         //private Definitions _definitions;
         private readonly ConcurrentDictionary<DefinitionTree, TmpLocator> _arcs;
 
-        public DefinitionReader()
+        public DefinitioTreeReader()
         {
             //_definitions = new Definitions();
             _arcs = new ConcurrentDictionary<DefinitionTree, TmpLocator>();
